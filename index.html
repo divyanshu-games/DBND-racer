@@ -1,0 +1,1539 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+
+<meta name="viewport"
+      content="width=device-width,
+      initial-scale=1.0,
+      maximum-scale=1.0,
+      user-scalable=no">
+
+<title>Hill Rush</title>
+
+<style>
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+}
+
+body{
+    overflow:hidden;
+    background:#70c8f5;
+    font-family:Arial;
+}
+
+canvas{
+    display:block;
+    width:100vw;
+    height:100vh;
+}
+
+/* TOP HUD */
+
+#hud{
+    position:fixed;
+    top:10px;
+    left:10px;
+    right:10px;
+
+    display:flex;
+    justify-content:space-between;
+
+    z-index:10;
+
+    pointer-events:none;
+}
+
+.box{
+    background:rgba(0,0,0,0.75);
+    color:white;
+
+    padding:10px;
+
+    border:2px solid white;
+    border-radius:12px;
+
+    font-weight:bold;
+}
+
+/* FUEL */
+
+#fuelBox{
+    width:120px;
+    height:14px;
+
+    background:#333;
+
+    border:2px solid white;
+    border-radius:10px;
+
+    overflow:hidden;
+}
+
+#fuel{
+    width:100%;
+    height:100%;
+
+    background:#19d66b;
+}
+
+/* MESSAGE */
+
+#message{
+
+    position:fixed;
+
+    left:50%;
+    top:45%;
+
+    transform:translate(-50%,-50%);
+
+    background:rgba(0,0,0,0.85);
+
+    color:white;
+
+    padding:25px;
+
+    border:3px solid white;
+    border-radius:15px;
+
+    text-align:center;
+
+    font-size:24px;
+    font-weight:bold;
+
+    display:none;
+
+    z-index:20;
+}
+
+/* MOBILE BUTTONS */
+
+#controls{
+
+    position:fixed;
+
+    bottom:20px;
+
+    left:0;
+    right:0;
+
+    display:flex;
+    justify-content:space-between;
+
+    padding:0 20px;
+
+    z-index:15;
+}
+
+button{
+
+    width:70px;
+    height:70px;
+
+    border-radius:50%;
+
+    border:3px solid white;
+
+    background:rgba(0,0,0,0.6);
+
+    color:white;
+
+    font-size:28px;
+    font-weight:bold;
+}
+
+button:active{
+    background:#777;
+}
+
+.group{
+    display:flex;
+    gap:12px;
+}
+
+</style>
+</head>
+
+
+<body>
+
+<canvas id="game"></canvas>
+
+
+<!-- HUD -->
+
+<div id="hud">
+
+    <div class="box">
+
+        🏁 Position:
+        <span id="position">2</span>/2
+
+        <br>
+
+        📏 Distance:
+        <span id="distance">0</span> m
+
+        <br>
+
+        🪙 Coins:
+        <span id="coins">0</span>
+
+    </div>
+
+
+    <div class="box">
+
+        ⛽ Fuel
+
+        <div id="fuelBox">
+            <div id="fuel"></div>
+        </div>
+
+        🏪 Shops:
+        <span id="shops">0</span>
+
+    </div>
+
+</div>
+
+
+<!-- GAME OVER -->
+
+<div id="message"></div>
+
+
+<!-- MOBILE CONTROLS -->
+
+<div id="controls">
+
+    <div class="group">
+
+        <button id="left">◀</button>
+
+        <button id="right">▶</button>
+
+    </div>
+
+
+    <div class="group">
+
+        <button id="brake">▼</button>
+
+        <button id="gas">▲</button>
+
+    </div>
+
+</div>
+
+
+
+<script>
+
+/* =========================
+   CANVAS
+========================= */
+
+const canvas =
+document.getElementById("game");
+
+const ctx =
+canvas.getContext("2d");
+
+
+let W = window.innerWidth;
+let H = window.innerHeight;
+
+
+function resize(){
+
+    W = window.innerWidth;
+    H = window.innerHeight;
+
+    canvas.width = W;
+    canvas.height = H;
+
+}
+
+resize();
+
+window.addEventListener(
+    "resize",
+    resize
+);
+
+
+
+/* =========================
+   CONTROLS
+========================= */
+
+let keys = {
+
+    left:false,
+    right:false,
+    gas:false,
+    brake:false
+
+};
+
+
+
+/* KEYBOARD */
+
+document.addEventListener(
+"keydown",
+function(e){
+
+    if(
+        e.key === "ArrowLeft" ||
+        e.key.toLowerCase() === "a"
+    ){
+        keys.left = true;
+    }
+
+
+    if(
+        e.key === "ArrowRight" ||
+        e.key.toLowerCase() === "d"
+    ){
+        keys.right = true;
+    }
+
+
+    if(
+        e.key === "ArrowUp" ||
+        e.key.toLowerCase() === "w"
+    ){
+        keys.gas = true;
+    }
+
+
+    if(
+        e.key === "ArrowDown" ||
+        e.key.toLowerCase() === "s"
+    ){
+        keys.brake = true;
+    }
+
+
+    if(e.key.toLowerCase() === "r"){
+        restart();
+    }
+
+});
+
+
+document.addEventListener(
+"keyup",
+function(e){
+
+    if(
+        e.key === "ArrowLeft" ||
+        e.key.toLowerCase() === "a"
+    ){
+        keys.left = false;
+    }
+
+
+    if(
+        e.key === "ArrowRight" ||
+        e.key.toLowerCase() === "d"
+    ){
+        keys.right = false;
+    }
+
+
+    if(
+        e.key === "ArrowUp" ||
+        e.key.toLowerCase() === "w"
+    ){
+        keys.gas = false;
+    }
+
+
+    if(
+        e.key === "ArrowDown" ||
+        e.key.toLowerCase() === "s"
+    ){
+        keys.brake = false;
+    }
+
+});
+
+
+
+/* MOBILE */
+
+function mobileButton(
+    id,
+    key
+){
+
+    const button =
+    document.getElementById(id);
+
+
+    button.addEventListener(
+        "pointerdown",
+        function(e){
+
+            e.preventDefault();
+
+            keys[key] = true;
+
+        }
+    );
+
+
+    button.addEventListener(
+        "pointerup",
+        function(){
+
+            keys[key] = false;
+
+        }
+    );
+
+
+    button.addEventListener(
+        "pointercancel",
+        function(){
+
+            keys[key] = false;
+
+        }
+    );
+
+}
+
+
+mobileButton("left","left");
+mobileButton("right","right");
+mobileButton("gas","gas");
+mobileButton("brake","brake");
+
+
+
+/* =========================
+   TERRAIN
+========================= */
+
+function ground(x){
+
+    return H * 0.68
+
+        + Math.sin(x * 0.006) * 60
+
+        + Math.sin(x * 0.014) * 25;
+
+}
+
+
+
+/* =========================
+   PLAYER
+========================= */
+
+let player = {
+
+    x:100,
+
+    y:0,
+
+    speed:0,
+
+    velocityY:0,
+
+    angle:0
+
+};
+
+
+
+/* =========================
+   BOT
+========================= */
+
+let bot = {
+
+    x:50,
+
+    y:0,
+
+    speed:0,
+
+    velocityY:0,
+
+    angle:0
+
+};
+
+
+
+/* =========================
+   GAME VARIABLES
+========================= */
+
+let camera = 0;
+
+let coinCount = 0;
+
+let shopCount = 0;
+
+let fuelAmount = 100;
+
+let gameOver = false;
+
+
+
+/* =========================
+   COINS
+========================= */
+
+let coinsList = [];
+
+
+for(
+    let x = 400;
+    x < 20000;
+    x += 300
+){
+
+    coinsList.push({
+
+        x:x,
+
+        collected:false
+
+    });
+
+}
+
+
+
+/* =========================
+   SHOPS
+========================= */
+
+let shopsList = [];
+
+
+for(
+    let x = 1200;
+    x < 20000;
+    x += 1500
+){
+
+    shopsList.push({
+
+        x:x,
+
+        used:false
+
+    });
+
+}
+
+
+
+/* =========================
+   RESET
+========================= */
+
+function restart(){
+
+    player.x = 100;
+
+    player.y =
+    ground(100) - 30;
+
+    player.speed = 0;
+
+    player.velocityY = 0;
+
+    player.angle = 0;
+
+
+    bot.x = 50;
+
+    bot.y =
+    ground(50) - 30;
+
+    bot.speed = 0;
+
+    bot.velocityY = 0;
+
+    bot.angle = 0;
+
+
+    camera = 0;
+
+    coinCount = 0;
+
+    shopCount = 0;
+
+    fuelAmount = 100;
+
+    gameOver = false;
+
+
+    coinsList.forEach(
+        c => c.collected = false
+    );
+
+
+    shopsList.forEach(
+        s => s.used = false
+    );
+
+
+    document.getElementById(
+        "message"
+    ).style.display = "none";
+
+}
+
+
+
+/* =========================
+   PLAYER PHYSICS
+========================= */
+
+function updatePlayer(){
+
+    /* GRAVITY */
+
+    player.velocityY += 0.5;
+
+    player.y +=
+    player.velocityY;
+
+
+    let g =
+    ground(player.x);
+
+
+    /* ON GROUND */
+
+    if(
+        player.y + 25 >= g
+    ){
+
+        player.y =
+        g - 25;
+
+        player.velocityY = 0;
+
+
+        /* ACCELERATION */
+
+        if(keys.gas){
+
+            player.speed += 0.15;
+
+            fuelAmount -= 0.03;
+
+        }
+
+
+        /* BRAKE */
+
+        if(keys.brake){
+
+            player.speed *= 0.93;
+
+        }
+
+
+        /* ROTATION */
+
+        if(keys.left){
+
+            player.angle -= 0.025;
+
+        }
+
+
+        if(keys.right){
+
+            player.angle += 0.025;
+
+        }
+
+
+        /* NATURAL ALIGNMENT */
+
+        let slope =
+        ground(player.x + 5)
+        -
+        ground(player.x);
+
+        player.angle +=
+        slope * 0.002;
+
+    }
+
+
+    /* SPEED LIMIT */
+
+    if(player.speed > 7){
+
+        player.speed = 7;
+
+    }
+
+
+    if(player.speed < 0){
+
+        player.speed = 0;
+
+    }
+
+
+    player.speed *= 0.995;
+
+
+    player.x +=
+    player.speed;
+
+}
+
+
+
+/* =========================
+   BOT
+========================= */
+
+function updateBot(){
+
+    bot.velocityY += 0.5;
+
+    bot.y +=
+    bot.velocityY;
+
+
+    let g =
+    ground(bot.x);
+
+
+    if(
+        bot.y + 25 >= g
+    ){
+
+        bot.y =
+        g - 25;
+
+        bot.velocityY = 0;
+
+
+        bot.speed += 0.11;
+
+
+        if(bot.speed > 5.5){
+
+            bot.speed = 5.5;
+
+        }
+
+    }
+
+
+    bot.x +=
+    bot.speed;
+
+}
+
+
+
+/* =========================
+   COLLECT COINS
+========================= */
+
+function collectCoins(){
+
+    coinsList.forEach(
+    function(c){
+
+        if(
+            !c.collected &&
+
+            Math.abs(
+                player.x - c.x
+            ) < 35
+        ){
+
+            c.collected = true;
+
+            coinCount++;
+
+        }
+
+    });
+
+}
+
+
+
+/* =========================
+   SHOPS
+========================= */
+
+function checkShops(){
+
+    shopsList.forEach(
+    function(s){
+
+        if(
+            !s.used &&
+
+            Math.abs(
+                player.x - s.x
+            ) < 80
+        ){
+
+            s.used = true;
+
+            shopCount++;
+
+            fuelAmount += 25;
+
+
+            if(
+                fuelAmount > 100
+            ){
+
+                fuelAmount = 100;
+
+            }
+
+        }
+
+    });
+
+}
+
+
+
+/* =========================
+   CRASH
+========================= */
+
+function checkCrash(){
+
+    if(
+        Math.abs(player.angle)
+        > 1.5
+    ){
+
+        endGame(
+            "💥 CRASH!"
+        );
+
+    }
+
+
+    if(
+        fuelAmount <= 0
+    ){
+
+        fuelAmount = 0;
+
+        endGame(
+            "⛽ OUT OF FUEL!"
+        );
+
+    }
+
+
+    if(
+        player.x >= 20000
+    ){
+
+        endGame(
+            "🏆 YOU WIN!"
+        );
+
+    }
+
+}
+
+
+
+/* =========================
+   END GAME
+========================= */
+
+function endGame(text){
+
+    gameOver = true;
+
+
+    let message =
+    document.getElementById(
+        "message"
+    );
+
+
+    message.innerHTML =
+    text +
+    "<br><small>Press R to restart</small>";
+
+
+    message.style.display =
+    "block";
+
+}
+
+
+
+/* =========================
+   DRAW SKY
+========================= */
+
+function drawSky(){
+
+    ctx.fillStyle =
+    "#70c8f5";
+
+    ctx.fillRect(
+        0,
+        0,
+        W,
+        H
+    );
+
+
+    /* SUN */
+
+    ctx.fillStyle =
+    "#ffd83d";
+
+    ctx.beginPath();
+
+    ctx.arc(
+        W - 80,
+        80,
+        40,
+        0,
+        Math.PI * 2
+    );
+
+    ctx.fill();
+
+
+
+    /* CLOUD */
+
+    ctx.fillStyle =
+    "white";
+
+
+    for(
+        let i=0;
+        i<4;
+        i++
+    ){
+
+        let x =
+        (i*250 -
+        camera*0.15)
+        %
+        (W+300);
+
+
+        if(x < -100){
+
+            x += W+300;
+
+        }
+
+
+        let y =
+        80 + i*35;
+
+
+        ctx.beginPath();
+
+        ctx.arc(
+            x,
+            y,
+            25,
+            0,
+            Math.PI*2
+        );
+
+        ctx.arc(
+            x+30,
+            y-10,
+            30,
+            0,
+            Math.PI*2
+        );
+
+        ctx.arc(
+            x+60,
+            y,
+            25,
+            0,
+            Math.PI*2
+        );
+
+        ctx.fill();
+
+    }
+
+}
+
+
+
+/* =========================
+   DRAW HILLS
+========================= */
+
+function drawHills(){
+
+    ctx.fillStyle =
+    "#72a85c";
+
+    ctx.beginPath();
+
+    ctx.moveTo(
+        0,
+        H
+    );
+
+
+    for(
+        let x=0;
+        x<W;
+        x+=10
+    ){
+
+        let worldX =
+        x + camera * 0.25;
+
+
+        let y =
+        H*0.55 +
+
+        Math.sin(
+            worldX*0.003
+        )*50;
+
+
+        ctx.lineTo(
+            x,
+            y
+        );
+
+    }
+
+
+    ctx.lineTo(W,H);
+
+    ctx.closePath();
+
+    ctx.fill();
+
+}
+
+
+
+/* =========================
+   DRAW ROAD
+========================= */
+
+function drawRoad(){
+
+    /* GROUND */
+
+    ctx.beginPath();
+
+    ctx.moveTo(
+        0,
+        H
+    );
+
+
+    for(
+        let x=0;
+        x<W;
+        x+=8
+    ){
+
+        ctx.lineTo(
+            x,
+            ground(
+                x + camera
+            )
+        );
+
+    }
+
+
+    ctx.lineTo(
+        W,
+        H
+    );
+
+
+    ctx.closePath();
+
+
+    ctx.fillStyle =
+    "#4f9c3f";
+
+    ctx.fill();
+
+
+
+    /* ROAD OUTLINE */
+
+    ctx.beginPath();
+
+
+    for(
+        let x=0;
+        x<W;
+        x+=8
+    ){
+
+        let y =
+        ground(
+            x + camera
+        );
+
+
+        if(x===0){
+
+            ctx.moveTo(x,y);
+
+        }
+        else{
+
+            ctx.lineTo(x,y);
+
+        }
+
+    }
+
+
+    /* BLACK OUTLINE */
+
+    ctx.strokeStyle =
+    "#111";
+
+    ctx.lineWidth =
+    22;
+
+    ctx.stroke();
+
+
+    /* ROAD */
+
+    ctx.strokeStyle =
+    "#9b7047";
+
+    ctx.lineWidth =
+    16;
+
+    ctx.stroke();
+
+
+
+    /* ROAD CENTER */
+
+    ctx.strokeStyle =
+    "#f5d34f";
+
+    ctx.lineWidth =
+    3;
+
+    ctx.setLineDash([
+        14,
+        12
+    ]);
+
+    ctx.stroke();
+
+    ctx.setLineDash([]);
+
+}
+
+
+
+/* =========================
+   DRAW COINS
+========================= */
+
+function drawCoins(){
+
+    coinsList.forEach(
+    function(c){
+
+        if(c.collected)
+            return;
+
+
+        let x =
+        c.x - camera;
+
+
+        if(
+            x < -30 ||
+            x > W+30
+        )
+            return;
+
+
+        let y =
+        ground(c.x) - 55;
+
+
+        ctx.fillStyle =
+        "#ffd21f";
+
+        ctx.strokeStyle =
+        "#111";
+
+        ctx.lineWidth =
+        4;
+
+
+        ctx.beginPath();
+
+        ctx.arc(
+            x,
+            y,
+            12,
+            0,
+            Math.PI*2
+        );
+
+        ctx.fill();
+
+        ctx.stroke();
+
+
+        ctx.fillStyle =
+        "#111";
+
+        ctx.font =
+        "bold 14px Arial";
+
+        ctx.textAlign =
+        "center";
+
+        ctx.fillText(
+            "$",
+            x,
+            y+5
+        );
+
+    });
+
+}
+
+
+
+/* =========================
+   DRAW SHOP
+========================= */
+
+function drawShops(){
+
+    shopsList.forEach(
+    function(s){
+
+        let x =
+        s.x-camera;
+
+
+        if(
+            x < -100 ||
+            x > W+100
+        )
+            return;
+
+
+        let y =
+        ground(s.x);
+
+
+        /* BUILDING */
+
+        ctx.fillStyle =
+        "#e45c3d";
+
+        ctx.strokeStyle =
+        "#111";
+
+        ctx.lineWidth =
+        4;
+
+
+        ctx.fillRect(
+            x-40,
+            y-80,
+            80,
+            60
+        );
+
+
+        ctx.strokeRect(
+            x-40,
+            y-80,
+            80,
+            60
+        );
+
+
+        /* ROOF */
+
+        ctx.fillStyle =
+        "#7d3027";
+
+
+        ctx.beginPath();
+
+        ctx.moveTo(
+            x-50,
+            y-80
+        );
+
+        ctx.lineTo(
+            x,
+            y-115
+        );
+
+        ctx.lineTo(
+            x+50,
+            y-80
+        );
+
+        ctx.closePath();
+
+        ctx.fill();
+
+        ctx.stroke();
+
+
+
+        /* SIGN */
+
+        ctx.fillStyle =
+        "white";
+
+        ctx.fillRect(
+            x-42,
+            y-105,
+            84,
+            22
+        );
+
+
+        ctx.strokeRect(
+            x-42,
+            y-105,
+            84,
+            22
+        );
+
+
+        ctx.fillStyle =
+        "#111";
+
+        ctx.font =
+        "bold 15px Arial";
+
+        ctx.textAlign =
+        "center";
+
+        ctx.fillText(
+            "SHOP",
+            x,
+            y-88
+        );
+
+    });
+
+}
+
+
+
+/* =========================
+   DRAW CAR
+========================= */
+
+function drawCar(
+    car,
+    color,
+    name
+){
+
+    let x =
+    car.x - camera;
+
+    let y =
+    car.y;
+
+
+    ctx.save();
+
+
+    ctx.translate(
+        x,
+        y
+    );
+
+
+    ctx.rotate(
+        car.angle
+    );
+
+
+    /* CAR BODY */
+
+    ctx.fillStyle =
+    color;
+
+    ctx.strokeStyle =
+    "#111";
+
+    ctx.lineWidth =
+    4;
+
+
+    ctx.beginPath();
+
+    ctx.moveTo(
+        -38,
+        10
+    );
+
+    ctx.lineTo(
+        -35,
+        -12
+    );
+
+    ctx.lineTo(
+        -18,
+        -16
+    );
+
+    ctx.lineTo(
+        -8,
+        -32
+    );
+
+    ctx.lineTo(
+        18,
+        -32
+    );
+
+    ctx.lineTo(
+        30,
+        -15
+    );
+
+    ctx.lineTo(
+        38,
+        -8
+    );
+
+    ctx.lineTo(
+        38,
+        10
+    );
+
+    ctx.closePath();
+
+
+    ctx.fill();
+
+    ctx.stroke();
+
+
+
+    /* WINDOWS */
+
+    ctx.fillStyle =
+    "#9de8ff";
+
+    ctx.strokeStyle =
+    "#111";
+
+    ctx.lineWidth =
+    3;
+
+
+    ctx.beginPath();
+
+    ctx.moveTo(
+        -8,
+        -28
+    );
+
+    ctx.lineTo(
+        2,
+        -28
+    );
+
+    ctx.lineTo(
+        7,
+        -18
+    );
+
+    ctx.lineTo(
+        -14,
+        -18
+    );
+
+    ctx.closePath();
+
+    ctx.fill();
+
+    ctx.stroke();
+
+
+
+    ctx.beginPath();
+
+    ctx.moveTo(
+        6,
+        -28
+    );
+
+    ctx.lineTo(
+        17,
+        -27
+    );
+
+    ctx.lineTo(
+        24,
+        -18
+    );
+
+    ctx.lineTo(
+        10,
+        -18
+    );
+
+    ctx.closePath();
+
+    ctx.fill();
+
+    ctx.stroke();
+
+
+
+    /* WHEELS */
+
+    drawWheel(
+
+      
